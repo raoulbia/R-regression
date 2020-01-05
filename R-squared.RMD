@@ -1,0 +1,183 @@
+
+---
+title: "The Effect of Total Variation on R-squared"
+output: html_notebook
+---
+
+```{r setup, include=FALSE, message=FALSE}
+rm(list = ls())
+library(tidyverse)
+library(gridExtra)
+library(kableExtra)
+library(latex2exp)
+```
+
+### Introduction
+
+I recently took an introductory course in Data Analytics. As could be expected the course covered linear regression and associated methods and metrics for evaluating the models. Linear models describe a continuous response variable as a function of one or more predictor variables. Linear regression is a statistical method used to create a linear model. The model describes the relationship between a dependent variable $y$ (also called the response) as a function of one or more independent variables $x$ (called the predictors)^[https://www.mathworks.com/discovery/linear-model.html]. 
+
+Such courses must of course tick all the boxes and therefore cover a lot of ground in a short period of time. The risk then is that, if studying part-time as I do, one tends not to internalise all of the material as thoroughly as one should. To address this concern I wrote this article to review one of the metrics covered in the course, namely the coefficient of determination $R^2$. The coefficient is used for evaluating linear regression models. Other ways for evaluating regression models, for example the regression coefficients, the standard error of the regression $s_e$ and the correlation coefficient $r$ are out of scope for this article. 
+
+The general equation for a linear model with one predictor variable is $y = \beta_0 + \beta_1x + \epsilon$, where the coefficients $\beta_0$ (called *intercept*) and $\beta_1$ (called *slope*) represent parameter estimates to be computed, and the error term $\epsilon$ represents the total variation in the dependent variable $y$. Distances are measured as sum of squared distance. Values are squared simply to eliminate the fact that distances may be positive or negative depending on whether observed values lie below or above the regression line. The variation due to regression and the variation due to residuals are both based on the predicted values produced by the model.
+
+$R^2$ is a commonly used metric for evaluating a regression model. Although not particularly difficult to grasp I thought it would be useful to explore $R^2$ a little more. In particular I was interested in the relationship between the measure of total variation in the dependent variable $y$ and the $R^2$ measure. In a nutshell, in this article I will use R (the programming language) to produce two toy datasets, one with large, the other with low variation, and to visualise how $R^2$ behaves in each case using a stacked barchart. As they say, a picture paints a thousands words. 
+
+<br />
+
+### Three measures of variation and $R^2$
+
+In order to interpret $R^2$ it is necessary to briefly reviews its component parts. $R^2$ is based on three different measures of variation in the observed and predicted dependent variables $y$ and $\hat{y}$:
+
+* The total variation (SSTot), measured as the sum of squared (vertical) distances between observed values and the mean of observed values: $\sum{(y-\bar{y})^2}$.  
+* The variation due to regression (SSReg), measured as the sum of squared (vertical) distances between predicted values and the mean of observed values: $\sum{(\hat{y}-\bar{y})^2}$.
+* The variation due to residuals (SSResid), measured as the sum of squared (vertical) distances between predicted values and corresponding observed values: $\sum{(\hat{y} - y)^2}$.
+
+The total variation is a model-independent property of the data. Total variation on one hand, and variation due to regression and residuals on the other hand are two sides of the same coin:
+
+$$SSTot = SSReg + SSResid$$
+
+Algebraically this is expressed as follows:
+
+$$\sum{(y-\bar{y})^2} = \sum{(\hat{y}-\bar{y})^2}  + \sum{(\hat{y} - y)^2}$$
+
+$R^2$ then is a ratio that tells us how much of the model (in percent) can be attributed to the actual linear relationship between dependent and independent variable and, by extension, how much of the relationship cannot be described by a linear model:
+
+$$R^2 = \frac{SSReg}{SSTot} = 1 - \frac{SSResid}{SSTot}$$
+
+<br />
+
+### Setting up the Datasets
+
+To study the effect of total variation on the $R^2$ measure, two datasets composed of random numbers drawn from a normal distribution are compared. The primary difference in the datasets is their variance, low and high respectively, in the dependent variable $y$. Both datasets are shown in the scatterplots below. The plots also show the regression lines (in blue) as well as the mean $\bar{y}$ of the observed values $y$.
+
+```{r, fig.width=10,fig.height=4}
+
+# create the same random numbers
+set.seed(123)
+
+# helper param
+m = c(0.3, 1)
+
+# helper data structures
+plist = list()
+data <- list()
+rsquared <- vector()
+
+for (i in seq_along(m)){
+  
+  # set up the data
+  x <- rnorm(100)
+  y <- x + rnorm(100) * m[[i]]
+  ybar <- mean(y)
+  data[[i]] <- data.frame(x,y)
+  
+  # produce linear model
+  lm <- lm(data[[i]]$y ~ data[[i]]$x) # tilde is read as "is modeled as a function of".
+  
+  # get coefficients
+  coeffs = round(coefficients(lm), 2)
+  
+  # get R-squared
+  rsq = summary(lm)$r.squared
+  rsquared <- c(rsquared, rsq)
+
+  # setup annotations for displaying R-squared on plot
+  annotations <- data.frame(
+    xpos = -Inf, ypos = -Inf,
+    annotateText = sprintf(TeX("$R^2$=%s", output = "character"), 
+                           format(round(rsq, 2), nsmall = 2)),
+    hjustvar = -0.2, vjustvar = -15)
+
+  # set plot subtitle
+  if (i==1) {subt="Low"} else {subt="High"}
+  
+  # add plot to list
+  plist[[i]] <- ggplot(data[[i]], aes(x=x, y=y)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, size=0.5) +
+  geom_hline(yintercept=ybar, size=0.3) +
+  geom_text(label=TeX("$\\bar{y}$"), x=2, y=ybar, vjust=0) +
+  geom_text(data = annotations, 
+            aes(x=xpos, y=ypos, hjust=hjustvar,
+                vjust=vjustvar,
+                label=annotateText),
+            parse = TRUE) +
+  labs(title = paste(subt,"Variance"),
+         subtitle = paste("Linear Model: y =", coeffs[1], "+", coeffs[2], "x"),
+         caption = "", x = "x", y = "y",tag = "") +
+  theme_minimal()
+}
+
+# produce linear model
+low <- data[[1]]
+high <- data[[2]]
+
+# display plots 
+margin = theme(plot.margin = unit(c(0,1,0,1), "cm"))
+grid.arrange(grobs = lapply(plist, "+", margin), ncol=2)
+```
+<br />
+
+### The effect of total variation on $R^2$
+
+First the values for SSTot, SSReg and SSResid are computed. These then allow us to compute $R^2$ and we see that the proportion of the total variation in the dependent variable $y$ that can be attributed to the linear relationship between $y$ and $x$ is `r round(rsquared[1]*100, 0)`% for the low variation data, and `r round(rsquared[2]*100, 0)`% for the high variation data respectively. These proportions are visualised in the stacked barcharts below. 
+
+<br />
+
+```{r}
+# Compute Variations and R-squared
+
+df <- data.frame("Dataset" = c("low var", "high var"),
+                 "mean" = c(mean(low$y), mean(high$y)),
+                 "variance" = c(var(low$y), var(high$y)))
+
+# compute SSTot
+df <- df %>% mutate(SSTot = c(sum((low$y - mean(low$y))**2),
+                              sum((high$y - mean(high$y))**2)))
+
+# compute SSReg
+df <- df %>%
+  mutate(SSReg = c(sum((predict(lm(low$y ~ low$x)) - mean(low$y))**2),
+                   sum((predict(lm(high$y ~ high$x)) - mean(high$y))**2)))
+
+# compute SSResid
+df <- df %>%
+  mutate(SSResid = c(sum((low$y - predict(lm(low$y ~ low$x)))**2),
+                     sum((high$y - predict(lm(high$y ~ high$x)))**2)))
+
+# compute R-squared
+df <- df %>% mutate(RSquared = SSReg/SSTot*100)
+
+
+# display dataframe
+df %>%
+  kable(digits = 1) %>%
+  kable_styling(full_width = FALSE, position = 'left')
+```
+
+```{r, fig.width=5,fig.height=3}
+# Visualise breakdown of SSTot
+
+# pivot longer: prepare for stacked bar chart
+tmp <- df %>%
+  pivot_longer(c(SSReg, SSResid), names_to = "SS", values_to = "value") 
+
+# setup & display plot
+ggplot(tmp, aes(fill=SS, y=value, x=factor(Dataset))) +
+geom_bar(position="stack", stat="identity") +
+theme_minimal() +
+theme(aspect.ratio = 2/(1+sqrt(5))) + 
+theme(plot.title=element_text(size=12),
+      axis.title=element_text(size=8)) +
+labs(title = "SSReg vs. SSResid",
+     fill = "", # hide legend title
+     x = "", y = "Total Variation") + 
+theme_minimal()
+```
+
+### Conclusion
+
+The analysis of a linear regression model w.r.t. the breakdown of total variation SSTot into its constituent parts SSReg and SSResid allows us to conclude that in the case where $y$ has less variation about its mean, the proportion of variation that can be attributed to the linear relationship *SSReg*, dwarfs the proportion of variation that cannot be modeled by a linear relationship. This suggests that applying a linear model to the data is appropriate. However, where $y$ exhibits a greater variation about its mean, we observe that less than half of the total variation can be attributed to the linear relationship between dependent and independent variables. This suggests that a linear model may not be sufficiently robust to by itself represent the relationship between both variables.
+
+In this article I have, hopefully, illustrated how the variantion inherent to a response variable affects the ability to model its linear relationship, if any, with another independent variable. I showed how the coefficient of determination $R^2$ can be interpreted to assess the usefulness of a linear model. In theory, low variance in the response variable is desirable when it comes to building linear regression models. The $R^2$ measure is a good starting point for assessing both the degree of variance in the data and the usefulness of a linear regression model.
+
