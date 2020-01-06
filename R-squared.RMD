@@ -14,42 +14,30 @@ library(latex2exp)
 
 ### Introduction
 
-This article deals with the evaluation of linear regression models. Evaluation metrics for linear regression models include the standard error of the regression se, the correlation coefficient r and the coefficient of determination R2. The focus of this article is R2, and the goal is to review how to "read" an R2 value when evaluating a linear regression model. Specifically, the article looks at how the total variation of a dependent variable, as a function of another independent variable, affects the value or R2.
+Regression is a statistical method used to model facts we observe in the world.  The purpose of producing such models is to help us explain those facts.  For example, how can we explain, or model, the fact that arctic ice is melting or that temperatures are rising? Regression uses the data that is measured alongside a fact of interest to model the latter by looking at the relationship that may exist between. In the case of a linear regression model, as its name suggests, the model seeks to exploit the fact that the independent explanatory variables and the dependent variable of interest are linearly correlated. As one variable increases or decreases so does the other. Both variables are then said to be positively, or negatively, linearly correlated. 
 
-The article is based on material learned as part of an introductory course in data analytics and various online resources, references to which are provided throughout the article. 
+The linear relationship between a dependent and an independent variable is represented in the form of the line $y = \beta_0 + \beta_1x + \epsilon$, where the regression coefficients $\beta_0$ (called *intercept*) and $\beta_1$ (called *slope*) represent parameter estimates to be computed. The error term $\epsilon$ measures the differences between observed and predicted data points of $y$. Such linear regression models are evaluated using metrics such as the standard error of the regression se, the correlation coefficient r, the coefficient of determination R2, and the adjusted coefficient of determination adjusted R2. The discussion proposed in this artile is limited to R2. 
 
-### A brief review of terminology and definitions
+The goal of the article is to explore the evaluation metric R2 in light of the variance that is inherent to a dependent variable of interest. The question posed is whether the variance of a dependent variable y affect the ability of an independant variable to explain their linear relationship? Or, in other words, is a dependent variable better suited to a linear regression model if its variance is small rather than large? 
 
-Regression is a statistical method used to model facts we observe in the world.  The purpose of producing such models is to help us explain those facts.  For example, how can we explain, or model, the fact that arctic ice is melting or temperatures are rising? 
-
-In statistical parlance, the fact of interest that we wish to explain through a regression model is referred to as the regressand, or the dependant variable. The data that is used to help explain that fact consists of one or more variables, referred to as regressors, or independent variables.
-
-Linear regression consists of finding a line (or a more complex linear function) that most closely fits the data according to a specific mathematical criterion. For example, the method of ordinary least squares computes the line that minimizes the sum of squared distances between the true data and that line. This allows to estimate the conditional expectation (or population average value) of the dependent variable when the independent variables take on a given set of values ^[https://en.wikipedia.org/wiki/Regression_analysis].
-
-In a linear relationship, as the regressor and regressand increase or decrease in tandem, and both variables are said to be positively or negatively correlated. The relationship between a dependent and one or more independent variables is represented in the form $y = \beta_0 + \beta_1x + \epsilon$, where the regression coefficients $\beta_0$ (called *intercept*) and $\beta_1$ (called *slope*) represent parameter estimates to be computed. The error term $\epsilon$ measures the differences between observed and predicted data points of $y$.
-
-R2 is based on the concept of variation. In general, variation refers to how far a set of data points are from their mean. The avergae of this distance is referred to as variance. If data points are close to their mean value, the varaince is small, otherwise it is large. In the present context it is useful to remind ourselves that variation can take several forms. For example, y has its own variation when looked at in isolation i.e. its probability distribution. However, when looked at in the regressor-regressand context, the variation we are measuring is different. In that case it is the variation that arises from the correlation between y and x. If x is well suited to explaining y, then the variation in y will be low, high otherwise. This variation is independent of, and different from, the variation we observe when looking at y in isolation, without reference to another variable. 
+Intuitively the answer is yes of course as low variance essentially means that the observed values of y will be scattered more closely around the regression line. Consequently, assuming that some linear relationship exists, the overall error will be smaller. But that is just inutuition and in this article I propose to demonstrate the same using random data and R (the programming language). 
 
 
 ### The deterministic and stochastic components of regression
 
-A good way to think about a regression model is in terms of their deterministic and and stochastic components ^[https://statisticsbyjim.com/regression/check-residual-plots-regression-analysis/]. The term deterministic relates to the philosophical doctrine that all events, including human action, are ultimately determined by causes regarded as external to the will ^[https://www.lexico.com/en/definition/deterministic]. The term stochastic relates to having a random probability distribution or pattern that may be analysed statistically but may not be predicted precisely ^[https://www.lexico.com/en/definition/stochastic].
-
-In the context of linear regression, the regression coefficients represent the deterministic, explainable, part of the relationship. The error represents the stochastic, random, part. We could therefore express a regression model as
+A good way to think about a regression model is in terms of their deterministic and and stochastic components ^[https://statisticsbyjim.com/regression/check-residual-plots-regression-analysis/]. The term deterministic relates to the philosophical doctrine that all events, including human action, are ultimately determined by causes regarded as external to the will ^[https://www.lexico.com/en/definition/deterministic]. The term stochastic relates to having a random probability distribution or pattern that may be analysed statistically but may not be predicted precisely ^[https://www.lexico.com/en/definition/stochastic]. In the context of linear regression model, the regression coefficients represent the deterministic, explainable, part, the error represents the stochastic, random, part and and the model can be described as follows:
 
 $$Dependent \ Variable = Deterministic + Stochastic$$
 
-### Decomposing Total Variation 
-
 The cornerstone of the R2 metric is that variation in $y$, when seen through the lens of its correlation with $x$, is composed of both deterministic and stochastic variation. The deterministic variation represents that which is explained by $x$, the stochastic variation represents that which $x$ cannot explain. If there were no stochastic variation, the error term of the model (see algebraic formulation above) would be zero, meaning that $y$ and $x$ are perfectly correlated and one could know or predict one by knowing the other. An example would be the length of a side of a square to the perimeter of the square ^[https://www.quora.com/What-is-a-perfect-positive-correlation]. The purpose of R2 is to determine the proportion of the deterministic variation in the total variation of $y$. 
 
-$R^2$ is based on three different measures of distance, involving observed values of $y$, their mean $\bar{y}$ and the values $\hat{y}$ predicted by the model:
+In order to determine the proportions of explainable and unexplainable variation three different distances are measured:
 
-* The total variation (SSTot), measured as the sum of squared (vertical) distances between observed values and the mean of observed values: $\sum{(y-\bar{y})^2}$.  
-* The variation due to regression (SSReg), measured as the sum of squared (vertical) distances between predicted values and the mean of observed values: $\sum{(\hat{y}-\bar{y})^2}$.
-* The variation due to residuals (SSResid), measured as the sum of squared (vertical) distances between predicted values and corresponding observed values: $\sum{(\hat{y} - y)^2}$.
+* the distances between observed values and the mean of observed values: $\sum{(y-\bar{y})^2}$.  
+* the distances between predicted values and the mean of observed values: $\sum{(\hat{y}-\bar{y})^2}$.
+* the distances between predicted values and corresponding observed values: $\sum{(\hat{y} - y)^2}$.
 
-Distances are measured as sum of squared distance. Values are squared simply to eliminate the fact that distances may be positive or negative depending on whether observed values lie below or above the regression line. The variation due to regression (deterministic) and the variation due to residuals (stochastic) are both based on the predicted values produced by the model. Total variation is the sum of variation due to regression and variation due to residuals:
+Distances are squared and summed to produce The total variation *SSTot*, variation due to regression *SSReg* and the variation due to residuals *SSResid*. Values are squared simply to eliminate the fact that distances may be positive or negative depending on whether observed values lie below or above the regression line. As seen above, the variation due to regression (deterministic) and the variation due to residuals (stochastic) are both based on the predicted values produced by the model. Total variation is the sum of both:
 
 $$SSTot = SSReg + SSResid$$
 
@@ -68,12 +56,16 @@ R2 tells us how much of the model, in percent, can be attributed to the determin
 
 ### Demonstration
 
-In this section I show some of the concepts discussed above using R. For the purposes of this article we will analyse a positive linear relationship between one dependent and one independent variable using randomly generated data.
+As mentioned above, let us now attempt to answer the question of interest by performing a small test using random data and R. The test consists of two linear regression models. Each model is based on a positive linear relationship between a dependent variable y and an independent variable x. The models differ only in the variation of y. All other factors are controlled for i.e. are identical.
 
+#### Setting up the Data  
 
-#### Setting up the Data
+To observe whether the variance of the dependent variable y affect the ability of an independant variable to explain their linear relationship, two datasets with the following properties are compared:
 
-To study the effect of total variation on the $R^2$ measure, two datasets composed of random numbers drawn from a normal distribution are compared. The primary difference in the datasets is their variance, low and high respectively, in the dependent variable $y$. Both datasets are shown in the scatterplots below. The plots also show the regression lines (in blue) as well as the mean $\bar{y}$ of the observed values $y$.
+* the datsets are composed of 100 random numbers drawn from a normal distribution. 
+* both datasets have a mean of zero and a standard deviation of 1
+
+The visualisations below include the density plots for each variable and each dataset are shown below and the scatterplots for each pair of y~x relationship. The scatterplots also show the regression lines (in blue) as well as the mean $\bar{y}$.
 
 ```{r, fig.width=10,fig.height=4}
 
@@ -82,6 +74,7 @@ set.seed(123)
 
 # helper data structures
 plist = list()
+plist_density = list()
 data <- list()
 rsquared <- vector()
 
@@ -121,36 +114,52 @@ for (i in seq_along(m)){
   
   # setup scatterplot and add plot list
   plist[[i]] <- ggplot(data[[i]], aes(x=x, y=y)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE, size=0.5) +
-  geom_hline(yintercept=ybar, size=0.3) +
-  geom_text(label=TeX("$\\bar{y}$"), x=2, y=ybar, vjust=0) +
-  geom_text(data = annotations, 
-            aes(x=xpos, y=ypos, hjust=hjustvar,
-                vjust=vjustvar,
-                label=annotateText),
-            parse = TRUE) +
-  ylim(-5,5) + 
-  labs(title = paste(subt,"Variance"),
-         subtitle = paste("Linear Model: y =", coeffs[1], "+", coeffs[2], "x"),
-         caption = "", x = "x", y = "y",tag = "") +
-  theme_minimal()
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, size=0.5) +
+    geom_hline(yintercept=ybar, size=0.3) +
+    geom_text(label=TeX("$\\bar{y}$"), x=2, y=ybar, vjust=0) +
+    geom_text(data = annotations, 
+              aes(x=xpos, y=ypos, hjust=hjustvar,
+                  vjust=vjustvar,
+                  label=annotateText),
+              parse = TRUE) +
+    ylim(-5,5) + 
+    labs(title = paste(subt,"Variance"),
+           subtitle = paste("Linear Model: y =", coeffs[1], "+", coeffs[2], "x"),
+           caption = "", x = "x", y = "y",tag = "") +
+    theme_minimal()
 }
 
 # produce linear model
 low <- data[[1]]
 high <- data[[2]]
 
-d1 <- ggplot(low, aes(y)) + geom_density(color="darkblue", fill="lightblue") + theme_minimal()
-d2 <- ggplot(low, aes(x)) + geom_density(color="darkblue", fill="lightblue") + theme_minimal()
-d3 <- ggplot(high, aes(y)) + geom_density(color="darkblue", fill="lightblue") + theme_minimal()
-d4 <- ggplot(high, aes(x)) + geom_density(color="darkblue", fill="lightblue") + theme_minimal()
-grid.arrange(d1,d2,d3,d4)
-# plot(density(low$x))
-# plot(density(high$y))
-# plot(density(high$x))
+for (i in 1:2){
+  for(j in 1:2){
+  plist_density[[i]] <- ggplot(data[[i]], aes(x=x, y=y)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, size=0.5) +
+    geom_hline(yintercept=ybar, size=0.3) +
+    geom_text(label=TeX("$\\bar{y}$"), x=2, y=ybar, vjust=0) +
+    geom_text(data = annotations, 
+              aes(x=xpos, y=ypos, hjust=hjustvar,
+                  vjust=vjustvar,
+                  label=annotateText),
+              parse = TRUE) +
+    ylim(-5,5) + 
+    labs(title = paste(subt,"Variance"),
+           subtitle = paste("Linear Model: y =", coeffs[1], "+", coeffs[2], "x"),
+           caption = "", x = "x", y = "y",tag = "") +
+    theme_minimal()  
+  }
+  }
+ 
+# density plots 
+d1 <- ggplot(data[[1]], aes(y)) + geom_density(color="darkblue", fill="lightblue") + xlim(-8,8) +  theme_minimal()
+d2 <- ggplot(data[[2]], aes(y)) + geom_density(color="darkblue", fill="lightblue") + xlim(-8,8) + theme_minimal()
+grid.arrange(d1,d2, ncol=3)
 
-# display plots 
+# display scatter plots 
 margin = theme(plot.margin = unit(c(0,1,0,1), "cm"))
 grid.arrange(grobs = lapply(plist, "+", margin), ncol=2)
 ```
@@ -164,6 +173,9 @@ In a first step, the values for SSReg, SSResid and SSTot are computed. These the
 
 ```{r}
 # Compute Variations and R-squared
+
+low <- data[[1]]
+high <- data[[2]]
 
 df <- data.frame("Dataset" = c("low var", "high var"),
                  "mean" = c(mean(low$y), mean(high$y)),
